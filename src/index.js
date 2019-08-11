@@ -1,6 +1,7 @@
 import {TesseractWorker} from 'tesseract.js';
 import TesseractTypes from '../node_modules/tesseract.js/src/common/types.js';
 
+
 const OEM = TesseractTypes.OEM, PSM = TesseractTypes.PSM;
 
 const worker = new TesseractWorker({
@@ -12,9 +13,10 @@ const worker = new TesseractWorker({
 
 const numbersInput = document.getElementById('numbers');
 
-document.addEventListener('click', function (e) {
+const audio = new Audio('img/hitmarker.mp3');
+
+document.addEventListener('click', e => {
     let message = 'Click at clientX ' + e.clientX + ', clientY ' + e.clientY;
-    let audio = new Audio('img/hitmarker.mp3');
     console.log(message);
     document.getElementById('clicked').innerHTML = message;
     document.getElementById('x').style.transform = 'translateX(' + (e.clientX) + 'px)';
@@ -127,12 +129,15 @@ imgElement.onload = function () {
                 0, 0, left + clicked.x, top + clicked.y,
                 false, false, false, false, 0, null
             );
-            
-            setTimeout(() => el.dispatchEvent(ev), 500 * index);
-            // Dispatch it on the element at the given coordinates.
-            // el.dispatchEvent(ev);
+
+            // Dispatch the event on the element at the given coordinates,
+            // with a delay between each click.
+            setTimeout(() => el.dispatchEvent(ev), 400 * index);
         });
     }, false);
+    
+    // TODO Check which numbers must be entered. The full code, or only some missing numbers?
+    
 
     // TODO Detect grid specs through OpenCV.
     // OPEN-CV TESTS
