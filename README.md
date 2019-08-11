@@ -1,4 +1,4 @@
-# Numeric keypad login form automation with Tesseract.js
+# (WIP) Numeric keypad login form automation with Tesseract.js
 
 The goal of this project is to enable automation of numeric keypad login forms such as these:
 
