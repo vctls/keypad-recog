@@ -7,9 +7,30 @@
         body {
             font-family: sans-serif;
         }
+        #x {
+            width: 1px;
+            height: 100%;
+            background-color: red;
+            position: absolute;
+            top: 0;
+            left: 0;
+            transition: transform 300ms;
+        }
+        #y {
+            height: 1px;
+            width: 100%;
+            background-color: red;
+            position: absolute;
+            top: 0;
+            left: 0;
+            transition: transform 300ms;
+        }
     </style>
 </head>
 <body>
+<!-- Crosshair -->
+<div id="x"></div>
+<div id="y"></div>
 <h2>Keypad Recognition</h2>
 <!--<p id="status">OpenCV.js is loading...</p>-->
 <div>
@@ -31,7 +52,7 @@
     </div>
     <div>
         <label>
-            <input id="numbers" type="number" min="0">
+            <input id="numbers" type="number" min="0" disabled="disabled">
         </label>Type a number here and press enter to click the corresponding number on the original image.
     </div>
     <div>
@@ -39,161 +60,7 @@
         <span id="clicked"></span>
     </div>
 </div>
-<script src='https://unpkg.com/tesseract.js@v2.0.0-alpha.13/dist/tesseract.min.js' type="text/javascript"></script>
 <!--<script async src="https://docs.opencv.org/master/opencv.js" onload="onOpenCvReady();" type="text/javascript"></script>-->
-<script type="text/javascript">
-    document.addEventListener('click', function (e) {
-        let message = 'Click at clientX ' + e.clientX + ', clientY ' + e.clientY;
-        console.log(message);
-        document.getElementById('clicked').innerHTML = message;
-    });
-
-    function getClippedRegion(image, x, y, width, height) {
-
-        let canvas = document.createElement('canvas'),
-            ctx = canvas.getContext('2d');
-
-        canvas.width = width;
-        canvas.height = height;
-
-        //                   source region         dest. region
-        ctx.drawImage(image, x, y, width, height, 0, 0, width, height);
-
-        return canvas;
-    }
-
-    let imgElement = document.getElementById('imageSrc'),
-        inputElement = document.getElementById('fileInput');
-
-    inputElement.addEventListener('change', (e) => {
-        imgElement.src = URL.createObjectURL(e.target.files[0]);
-    }, false);
-
-    imgElement.onload = function () {
-
-        // Define the image size, the number of columns, rows, and the border width of the cells.
-        let width = imgElement.width, height = imgElement.height,
-            cols = 5, rows = 2, cells = rows * cols, border = 3, box = 80;
-
-        // Calculate the position of each cell from the image size and the number of rows and colums.
-        let digits = [];
-
-        for (let i = 1; i <= rows; i++) {
-            for (let j = 1; j <= cols; j++) {
-                digits.push({
-                    x: Math.round(width / (cols * 2) * (j * 2 - 1)),
-                    y: Math.round(height / (rows * 2) * (i * 2 - 1))
-                });
-            }
-        }
-
-        // Split the image into each cell, discarding the border.
-        let canvas = document.getElementById('split'),
-            ctx = canvas.getContext('2d');
-
-        canvas.width = width;
-        canvas.height = height;
-
-        digits.forEach(function (digit) {
-            digit.image = getClippedRegion(imgElement, digit.x - box / 2, digit.y - box / 2, box, box);
-            ctx.drawImage(digit.image, digit.x - box / 2, digit.y - box / 2);
-        });
-
-        console.log(digits);
-
-        // OCR the digit of each cell.
-
-        const worker = new Tesseract.TesseractWorker(),
-            OEM = Tesseract.OEM, PSM = Tesseract.PSM,
-            result = document.getElementById('result')
-        ;
-
-        // TODO This is very slow. Should I merge them back and analyze a single canvas?
-        // TODO Make it work offline!
-        digits.forEach(function (digit) {
-            worker.recognize(digit.image, 'eng', {
-                // Legacy mode is necessary in order to use whitelists for now.
-                tessedit_ocr_engine_mode: OEM.TESSERACT_ONLY,
-                tessedit_char_whitelist: '0123456789',
-                // Try to use a different segmentation mode.
-                tessedit_pageseg_mode: PSM.SPARSE_TEXT
-            })
-            //.progress(function(data){console.log(data)})
-                .then(function (data) {
-                    let value = parseInt(data.text);
-                    digit.value = value;
-                    result.innerHTML += value;
-                });
-        });
-        console.log(digits);
-        
-        // TODO Wait until all characters are recognized before enabling input.
-
-        // Get numbers from an input.
-        let numbersInput = document.getElementById('numbers'),
-            rect = imgElement.getBoundingClientRect(),
-            left = Math.round(rect.left), top = Math.round(rect.top)
-        ;
-
-        console.log('Image top left corner is at ' + left + ', ' + top);
-
-        // Trigger a click event at the coordinates of each digit found.
-        numbersInput.addEventListener('change', (e) => {
-            let val = numbersInput.value;
-            console.log('Last number typed: ', val[val.length - 1]);
-            let clicked = digits.find(function (digit) {
-                return digit.value === parseInt(val);
-            });
-            console.log('Coordinates of the digit: ', clicked.x, clicked.y);
-            let el = document.elementFromPoint(left + clicked.x, top + clicked.y);
-            
-            // Create a real MouseEvent in order to use the coordinates.
-            let ev = document.createEvent('MouseEvent');
-            ev.initMouseEvent(
-                'click', true, true, window, null,
-                0, 0, left + clicked.x, top + clicked.y,
-                false, false, false, false, 0, null
-            );
-            
-            // Dispatch it on the element at the given coordinates.
-            el.dispatchEvent(ev);
-        }, false);
-
-        // TODO Detect grid specs through OpenCV.
-        // OPEN-CV TESTS
-        // // Create a mat from the image.
-        // let mat = cv.imread(imgElement);
-        //
-        // console.log('Image width: ' + imgElement.width);
-        // console.log('Image height: ' + imgElement.height);
-        //
-        // // Switch to grayscale.
-        // cv.cvtColor(mat, mat, cv.COLOR_RGBA2GRAY, 0);
-        //
-        // // Apply adaptative threshold.
-        // cv.threshold(mat, mat, 250, 255, cv.THRESH_OTSU);
-        //
-        // // Display the new mat.
-        // cv.imshow('canvasOutput', mat);
-        //
-        // let src = cv.imread(imgElement);
-        // let dst = cv.Mat.zeros(src.rows, src.cols, cv.CV_8UC3);
-        // let lines = new cv.Mat();
-        // let color = new cv.Scalar(255, 0, 0);
-        // cv.cvtColor(src, src, cv.COLOR_RGBA2GRAY, 0);
-        // cv.Canny(src, src, 50, 200, 3);
-        // cv.HoughLinesP(src, lines, 1, Math.PI / 2, 2, 150, 15);
-        // // draw lines
-        // for (let i = 0; i < lines.rows; ++i) {
-        //     let startPoint = new cv.Point(lines.data32S[i * 4], lines.data32S[i * 4 + 1]);
-        //     let endPoint = new cv.Point(lines.data32S[i * 4 + 2], lines.data32S[i * 4 + 3]);
-        //     cv.line(dst, startPoint, endPoint, color);
-        // }
-        // cv.imshow('lineOutput', dst);
-        // src.delete();
-        // dst.delete();
-        // lines.delete();
-    };
-</script>
+<script src="dist/main.js" type="text/javascript"></script>
 </body>
 </html>
